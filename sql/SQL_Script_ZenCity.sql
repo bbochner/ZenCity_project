@@ -1,104 +1,9 @@
-﻿SQL Script Zen City (Q1 2022)
-
-
-This script provides a comprehensive, end-to-end technical foundation for the Q2 Optimization Project, covering data validation, customer profile, efficiency, and predictive diagnostics.
-
-
-* INDEX
-
-
-I. DATA PREPARATION & CLEANING    pg 3
-* TABLE RENTALS:
-1. CHECKING POTENTIAL PRIMARY KEY.
-2. CHECKING MISSING VALUES.
-3. ENSURE THAT trip_id HAS NO NULL VALUES.
-4. VERIFY IF THERE ARE NULL VALUES IN start_station_id.
-5. CHECKING NULL VALUES IN end_station_id.
-6. CHECKING IF THE STATION WITHOUT ID: Springfest 2022 ITS PRESENT AT TABLE station_info.
-7. Due to a single null value in the end_station_id column, we decided to analyze it independently of end_station_name to ensure result accuracy.
-8. IDENTIFYING ROW COUNT DISCREPANCIES BETWEEN end_station_id AND end_station_name.
-9. CHECKING Rainey STATION IN station_info TABLE.
-10. IDENTIFY STATIONS IN THE RENTALS TABLE THAT ARE NOT RECORDED IN THE STATION_INFO TABLE.
-
-
-* TABLE STATION_INFO
-1. CHECKING POTENTIAL PRIMARY KEY.
-2. CHECKING MISSING VALUES.
-3. IDENTIFY STATIONS IN THE RENTALS TABLE THAT ARE NOT RECORDED IN THE STATION_INFO TABLE.
-4. ANALYSING STATIONS status.
-5. STATUS OF THE STATIONS FROM RENTALS TABLE.
-6. ANALYSING property_type.
-7. CHECKING RELATIONS BETWEEN name AND alternate_name.
-8. TOTAL STATIONS PER council_district.
-9. ANALYSING power_type.
-10.ANALYSING number_of_docks.
-
-
-II. DEMAND PATTERNS AND CUSTOMER PROFILING      pg 11
-1. START STATIONS IN rentals TABLE (start_station_id).
-2. TOP START STATIONS BY USAGE PERCENTAGE.
-3. TOP END STATIONS BY USAGE PERCENTAGE.
-4. Ensure that start_stations are also recorded as an end station.
-5. ANALYSING subscriber_type.
-6. TYPES AND SUM OF SUBSCRIBERS.
-7. Bike_type ANALYSIS BY USAGE PERCENTAGE.
-8. BIKE ID ANALYSIS: COUNT OF UNIQUE BIKES AND TOTAL TRIPS.
-9. ANALYSIS OF LOW-USAGE BIKES (1-2 Trips).
-10. CALCULATING THE AVERAGE BIKE USAGE.
-11. EXPLORATION OF TRIPS DURATION (duration_minutes).
-12. ANALYSING MOST POPULAR start_stations AND THEIR CHARACTERISTICS.
-13. ANALYSING MOST POPULAR end_stations AND THEIR CHARACTERISTICS.
-14. POPULAR ROUTES.
-15. STATION LOCATION FROM MOST POPULAR ROUTES.
-16. Query for BigQuery Geo Viz mapping of the Top 5 Popular Routes and location from all the stations.
-III. DEMAND AND TEMPORAL ANALYSIS   pg 24
-1. TOTAL RENTALS PER MONTH.
-2. TOTAL RENTALS BY WEEK/WEEKEND PER MONTH.
-3. TOTAL RENTALS BY DAY OF THE WEEK + WEEKDAY TYPE.
-4. TOTAL OF RENTALS: WEEKDAY TYPE PER MONTH.
-5. TOTAL RENTALS PER HOUR (PEAK HOURS).
-6. TOTAL RENTALS WEEK/WEEKEND x HOUR.
-7. TOTAL RENTALS x POPULAR STATIONS x RUSH/PEAK HOURS (10hr - 19hr).
-8. start_stations: AVERAGE WEEK/WEEKEND DAY PER DOCK.
-9. end_stations: AVERAGE WEEK/WEEKEND DAY PER DOCK.
-10. TRIPS PER DOCK start_station.
-11. TRIPS PER DOCK end_station.
-12. BIKE ROTATION ANALYSIS PER HOUR IN POPULAR ROUTES.
-13. Calculates the time-based station load, measuring average trip departures per dock, with imputation for missing capacity data.
-14. Query for the average hourly load during weekday peak hours, including the imputation (normalization) of missing dock capacity for stations lacking station information.
-
-
-IV. PREDICTION MODEL (APRIL 1ST, STATION 2498)    pg 36
-1. Data Collection and Preparation (BigQuery).
-2. Model Execution (Google Sheets: LINEST).
-3. Prediction Result.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/*
 I. DATA PREPARATION & CLEANING
 Centralizes data cleaning and ID standardization
+*/
 
-
-* TABLE RENTALS 
+--> TABLE RENTALS 
 bqproj-435911.zen_city.rentals:
 trip_id, subscriber_type, bike_id, bike_type, start_time, start_station_id,        start_station_name,        end_station_id, end_station_name,        duration_minutes 
 
@@ -137,9 +42,6 @@ select count(trip_id) as null_trip_id
 from `bqproj-435911.zen_city.rentals`
 where trip_id is null;
 --> NO null VALUES
-
-
-
 
 -- 4. VERIFY IF THERE ARE NULL VALUES IN start_station_id
 select count(start_station_id) as start_station_id
@@ -192,9 +94,6 @@ having count(distinct end_station_name) > 1
 -- 2563 Rainey/Davis AND Rainey/Driskill
 -- null 1
 
-
-
-
 -- 9. CHECKING Rainey STATION IN station_info TABLE.
 select *
 from `bqproj-435911.zen_city.station_info`
@@ -210,7 +109,7 @@ left join `bqproj-435911.zen_city.station_info` i
     on safe_cast(end_station_id as INT64) = i.station_id
 where i.station_id is null;
 
-
+/*
 RESUME FINDINGS:
 --> POTENTIAL PRIMARY KEY: trip_id.
 --> start_station_id AND end_station_id CAN BE USED TO JOIN BOTH TABLES(rentals + station_info)
@@ -222,12 +121,10 @@ RESUME FINDINGS:
       2563 - Rainey/Davis AND Rainey/Driskill ('Rainey/Driskill' is found in the station_info table with the address 698 Davis St, suggesting that these might be the same station.)
 --> SINCE WE ARE JOINING THE TABLES ON end_station_id, the end_station_name VALUES DO NOT REQUIRE CLEANING OR MODIFICATION.
 --> TOTAL end_stations: 80 STATIONS (WITH THE NO ID STATION INCLUDED)
+*/
 
 
-* TABLE STATION_INFO
-bqproj-435911.zen_city.station_info
-station_id, name, status, location, address, alternate_name, city_asset_number,        property_type, number_of_docks, power_type, footprint_length, footprint_width, notes        council_district, image, modified_date
-
+--> TABLE STATION_INFO
 
 -- 1. CHECKING POTENTIAL PRIMARY KEY
 select count(distinct station_id) as rows_station_id,
@@ -292,13 +189,13 @@ group by status;
 --> ACTIVE 77
 
 
-# ACTIVE STATIONS:
+-- # ACTIVE STATIONS:
 select *
 from `bqproj-435911.zen_city.station_info`
 where status = 'active';
 
 
-# CLOSED STATIONS:
+-- # CLOSED STATIONS:
 select *
 from `bqproj-435911.zen_city.station_info`
 where status = 'closed';
@@ -322,7 +219,7 @@ group by i.status;
 ----> null  6
 
 
-# IDENTIFYING NULL VALUES
+-- # IDENTIFYING NULL VALUES
 select distinct end_station_id , i.status
 from `bqproj-435911.zen_city.rentals` r
 left join `bqproj-435911.zen_city.station_info` i
@@ -331,7 +228,7 @@ order by i.status;
 --> The null values correspond to stations present in the RENTALS table but missing from the station_info table. 
 
 
-# IDENTIFYING THE ‘closed’ STATION
+-- # IDENTIFYING THE ‘closed’ STATION
 select distinct end_station_id , i.status
 from `bqproj-435911.zen_city.rentals` r
 left join `bqproj-435911.zen_city.station_info` i
@@ -341,7 +238,7 @@ order by i.status;
 --> station 3455
 
 
-# IDENTIFYING IF STATION 3455 HAS TRIPS
+-- # IDENTIFYING IF STATION 3455 HAS TRIPS
 select end_station_id, count(trip_id) as total_trips
 from `bqproj-435911.zen_city.rentals`
 where end_station_id = '3455'
@@ -350,13 +247,12 @@ group by end_station_id
 
 
 -- 6. ANALYSING property_type
-# TYPES OF property_type
+-- # TYPES OF property_type
 select DISTINCT property_type
 from `bqproj-435911.zen_city.station_info`;
 --> 5 TYPES OF property_type: parkland, sidewalk, paid_parking, nonmetered_parking, undetermined_parking
 
-
-# MOST POPULAR property_type
+-- # MOST POPULAR property_type
 select property_type,
   count(property_type) as total_property_type
 from `bqproj-435911.zen_city.station_info`
@@ -364,10 +260,6 @@ where property_type is not null
 group by property_type
 order by total_property_type DESC;
   
-
-
-
-
 
 -- 7. CHECKING RELATIONS BETWEEN name AND alternate_name
 select station_id,
@@ -401,7 +293,7 @@ group by power_type;
 --> non-metered - 3
 
 
-# power_type OF THE MOST POPULAR STATION 2498.
+-- # power_type OF THE MOST POPULAR STATION 2498.
 select *
 from `bqproj-435911.zen_city.station_info`
 where station_id = 2498
@@ -409,7 +301,7 @@ where station_id = 2498
 
 
 -- 10. ANALYSING number_of_docks
-# MODE number_of_docks = 13
+-- # MODE number_of_docks = 13
 select number_of_docks,
  count(number_of_docks) as mode_of_docks,
 from `bqproj-435911.zen_city.station_info`
@@ -420,12 +312,13 @@ group by number_of_docks
 order by mode_of_docks DESC;
 
 
-# AVG number_of_docks = 13.58
+-- # AVG number_of_docks = 13.58
 select avg(number_of_docks) as avg_number_of_docks
 from `bqproj-435911.zen_city.station_info`
 where number_of_docks is not null;
 
 
+/*
 FINDINGS:
 --> POTENTIAL PRIMARY KEY: station_id
 --> TOTAL 101 STATIONS
@@ -434,46 +327,7 @@ FINDINGS:
 --> STATION: 2502  Barton Springs & Riverside(closed) moved to 3293  East 2nd & Pedernales(active)
 --> STATION: 3455 appears as ‘closed’ but has 48 total_trips in the rentals table.
 --> The majority of stations utilize a solar power type; however, the most popular station is non-metered.
-
-
-station_info
-	rentals
-	FINDINGS
-	station_id
-	name
-	end_station_id
-	end_station_name
-	3841
-	23rd & Rio Grande
-	4938
-	22.5/Rio Grande
-	IS ESSENTIAL FOR ANALYSIS BUT IS NOT PRESENT IN THE station_info TABLE. WE NEED TO USE THE AVG_DOCK VALUE. BOTH STATIONS ARE NEAR TO EACH OTHER(220 meters away). STATION 3841 APPEARS TO BE CLOSED.
-	111
-	23rd & San Gabriel
-	7125
-	23rd/San Gabriel
-	SAME NAME AND HAS THIS NOTE:(Kiosk ID and Footprint length & width to be revised.)
-	1111
-	13th & Trinity
-	7131
-	13th/Trinity
-	SAME NAME AND HAS THIS NOTE:(The Kiosk ID and footprint length & width still need to be revised.)
-	0
-	South Congress/Mary
-	7187
-	South Congress/Mary
-	SAME NAME AND HAS THIS NOTE: (In the gutter)
-	3792
-	22nd & Pearl
-	7188
-	22nd/Pearl
-	BOTH STATION HAVE THE SAME NAME AND ARE AT THE SAME LOCATION AND APPEARS IN BOTH TABLES WITH DIFFERENT IDs.
-	2545
-	ACC-Rio Grande & 12th
-	7190
-	Rio Grande/12th
-	STATION 2545 APPEARS TO BE CLOSED AND HAS NO NUMBERS OF DOCKS. WE NEED TO USE THE AVG_DOCK VALUE. BOTH STATIONS ARE NEAR TO EACH OTHER(220 meters away)
-	
+*/
 
 --> STATIONS 7125, 7131, 7187 AND 7188 WILL BE MAPPED TO THEIR CORRECT station_id:
 case when end_station_id = '7187' then 0
@@ -483,9 +337,10 @@ case when end_station_id = '7187' then 0
        else safe_cast(end_station_id as INT64) end as clean_end_station_id
 
 
+/*
 II. DEMAND PATTERNS AND CUSTOMER PROFILING
 This section provides the foundational diagnostic analysis, detailing the primary customer segments, quantifying spatial demand concentration, and evaluating asset utilization and core trip duration characteristics.
-
+*/
 
 -- 1. START STATIONS IN rentals TABLE (start_station_id):
 select distinct start_station_id, start_station_name
@@ -503,9 +358,6 @@ group by start_station_id,
          start_station_name
 order by total_rentals desc;    
   
-
-
-
 -- 3. TOP END STATIONS BY USAGE PERCENTAGE
 select distinct safe_cast(end_station_id as INT64) as end_station_id, end_station_name,
               count(trip_id) as total_rentals,
@@ -513,10 +365,6 @@ select distinct safe_cast(end_station_id as INT64) as end_station_id, end_statio
 from `bqproj-435911.zen_city.rentals`
 group by end_station_id, end_station_name
 order by total_rentals desc;  
-
-
-(The visualization displays only the top 15 end stations.)  
-
 
 -- 4. Only seven distinct start_stations were found, and every one of them is also recorded as an end station. To verify this, we decided to be sure and to check...
 with start_distinct as (
@@ -536,13 +384,10 @@ inner join end_distinct e
   on s.start_station_id = safe_cast(end_station_id as INT64);
 --> ALL 7 START STATIONS ARE ALSO END STATION.
 
-
 -- 5. ANALYSING subscriber_type: 
 select distinct subscriber_type
 from `bqproj-435911.zen_city.rentals`;
 --> TOTAL OF SUBSCRIBERS 11 TYPES 
-
-
 
 
 -- 6. TYPES AND SUM OF SUBSCRIBERS
@@ -554,8 +399,6 @@ where subscriber_type is not null
 group by subscriber_type
 order by users_subscriber_type desc;
   
-
-
 
 -- 7. Bike_type ANALYSIS BY USAGE PERCENTAGE
 with total_bikes as (
@@ -572,8 +415,6 @@ select
 round((count_bike_type * 100) / total_trips, 1) AS percentage
 from total_bikes;
   
-
-
 
 -- 8. BIKE ID ANALYSIS: COUNT OF UNIQUE BIKES AND TOTAL TRIPS.
 select bike_id,
@@ -613,15 +454,12 @@ select m.total_bikes_utilized,
 from metrics as m;
   
 
-
-
 -- 10. CALCULATING THE AVERAGE BIKE USAGE
 with bikes as (select bike_id,
   count(bike_id) as total_trips
 from `bqproj-435911.zen_city.rentals`
 group by bike_id
 order by total_trips DESC)
-
 
 select avg(sum_trips) as total
 from bikes;
@@ -637,11 +475,10 @@ from `bqproj-435911.zen_city.rentals`
 group by duration_minutes
 order by total_trips DESC;
   
-
 --> This result indicates that most trips are less than 15 minutes.
 
 
-# CENTRAL TENDENCY AND DISPERSION METRICS
+-- # CENTRAL TENDENCY AND DISPERSION METRICS
 select count(duration_minutes) as rows_duration_minutes,
     sum(duration_minutes) as sum_duration_minutes,
     avg(duration_minutes) as avg_duration_minutes,
@@ -654,7 +491,7 @@ from `bqproj-435911.zen_city.rentals`;
 -- OUTLIERS: MAX = 4874min   MIN = 2min
 
 
-# ANALYSING THE OUTLIERS
+-- # ANALYSING THE OUTLIERS
 --> Only one trip with the MAX duration = 4874 min
 select count(trip_id) as total_trips
 from `bqproj-435911.zen_city.rentals`
@@ -797,6 +634,7 @@ left join bike_usage b
 order by d.total_trips DESC,
    d.clean_end_station_id,
    b.trips_by_bike_type DESC;
+/*
 --> #1  3798  21st/Speedway @ PCL --> 1864 - 22 docks
     #2  3838  26th/Nueces         --> 1153 - 13 docks
     #3  3795  Dean Keeton/Whitis  --> 805  - 19 docks
@@ -804,7 +642,7 @@ order by d.total_trips DESC,
     #5  111   23rd/San Gabriel    --> 700  - 13 docks
     #6  2498  Dean Keeton/Speedway--> 602  - 17 docks
     #7  3793  28th/Rio Grande     --> 592  - 13 docks
-
+*/
 
 -- 14. POPULAR ROUTES:
 with rentals as (
@@ -834,7 +672,6 @@ from `bqproj-435911.zen_city.rentals`
   order by total_trips DESC;
   
 
- 
 -- 15. STATION LOCATION FROM MOST POPULAR ROUTES
 with rentals as (
   select
@@ -924,7 +761,7 @@ FROM
 UNION ALL
 
 
-# SELECTION: THE TOP 5 ROUTES (LINES)
+-- # SELECTION: THE TOP 5 ROUTES (LINES)
 SELECT
   --- Creates the geographic line for the route
   ST_MAKELINE(
@@ -946,10 +783,10 @@ INNER JOIN
   Location_Data AS e_loc -- End Location
   ON safe_cast(end_station_id as INT64) = e_loc.station_id;
   
-
+/*
 III. DEMAND AND TEMPORAL ANALYSIS 
 Queries focused on when and where demand is highest, guiding rebalancing strategies.
-
+*/
 
 -- 1. TOTAL RENTALS PER MONTH
 with rentals_per_month as
@@ -965,8 +802,6 @@ total_rentals,
 round((total_rentals * 100) / sum(total_rentals) over (), 1) as percentage
 from rentals_per_month;
   
-
-
 
 -- 2. TOTAL RENTALS BY WEEK/WEEKEND PER MONTH
 select
@@ -1030,7 +865,7 @@ order by day_of_week,
   hour_rental desc;
 
 
-# TOTAL RENTALS WEEK x HOUR  
+-- # TOTAL RENTALS WEEK x HOUR  
 with rentals_day_hour as
 (select
 case when extract(dayofweek from start_time) = 1 or extract(dayofweek from start_time) = 7 then 'weekend' else 'week' end as day_of_week,
@@ -1050,7 +885,7 @@ where day_of_week = 'week'
 order by total_rentals DESC;
 
 
-# TOTAL RENTALS WEEKEND x HOUR
+-- # TOTAL RENTALS WEEKEND x HOUR
 with rentals_day_hour as
 (select
 case when extract(dayofweek from start_time) = 1 or extract(dayofweek from start_time) = 7 then 'weekend' else 'week' end as day_of_week,
@@ -1086,7 +921,7 @@ order by start_station_id,hour_rental,
   total_trips DESC;
 
 
-# ONLY THE 4 MOST POPULAR
+-- # ONLY THE 4 MOST POPULAR
 select
   extract(hour from start_time) as hour_rental,
   start_station_id,
@@ -1101,8 +936,6 @@ group by hour_rental,
 order by start_station_id,
   hour_rental,
   total_trips DESC;
-
-
 
 
 -- 8. start_stations: AVERAGE WEEK/WEEKEND DAY PER DOCK
@@ -1259,7 +1092,7 @@ group by r.clean_end_station_id,
   i.number_of_docks
 order by avg_daily_trips_per_dock desc;
 
-
+/*
 -- 12. BIKE ROTATION ANALYSIS PER HOUR IN POPULAR ROUTES
 -- OBJECTIVE: To calculate the exact hourly bike inventory at top stations for predictive rebalancing.
 RATIONALE FOR EXCLUSION:
@@ -1267,9 +1100,9 @@ This detailed Net Flow analysis (Departures vs. Arrivals) was developed to deter
 However, the model requires the initial starting inventory (bikes at the station) at the beginning of the day (e.g., 00:00 AM) to accurately calculate the cumulative inventory level (Bike Count = Start Inventory + Net Flow).
 Since the project data does not provide this initial inventory count, the Net Flow metric alone cannot reliably predict the exact moment a station will hit zero bikes (empty) or maximum capacity (full).
 CRITICAL INSIGHT: Despite this limitation, the Net Flow calculation was crucial as it provided fundamental qualitative insight into the underlying stock dynamics of the network, confirming the magnitude and direction of the hourly supply-demand imbalance.
+*/
 
-
-# CALCULATING AND REMOVING OUTLIERS IN duration_minutes:
+-- # CALCULATING AND REMOVING OUTLIERS IN duration_minutes:
 -- Finding de 99 percentil:
 SELECT
     APPROX_QUANTILES(duration_minutes, 100)[OFFSET(99)] AS max_duration_minutes_p99
@@ -1281,8 +1114,8 @@ WHERE
     ---->RESULT: 393 minutes
 
 
-# BIKE ROTATION ANALYSIS PER HOUR IN POPULAR ROUTES
-# The first rows (with the highest negative net_flow_out value) indicate the stations that most need free docks at that moment (need for bike removal).
+-- # BIKE ROTATION ANALYSIS PER HOUR IN POPULAR ROUTES
+-- # The first rows (with the highest negative net_flow_out value) indicate the stations that most need free docks at that moment (need for bike removal).
 WITH
   # DATA HANDLING AND TIME CALCULATION
   cleaned_rentals AS (
@@ -1450,11 +1283,13 @@ LEFT JOIN station_filled st
 GROUP BY st.start_station_id, st.start_station_name, week, st.number_of_docks_filled
 ORDER BY st.start_station_id, week;
 
-
+/*
 IV. PREDICTION MODEL (APRIL 1ST, STATION 2498)
 This section details the methodology used to predict the total number of rentals for Station 2498 on April 1st, 2022 (Day 91 of the year), using a simple linear regression model to capture the overall growth trend observed during Q1 2022.
+*/
+
 -- 1. Data Collection and Preparation (BigQuery)
-The initial step involved preparing the historical demand data for the target station (ID 2498). We aggregated the number of trips daily, creating a time series dataset for the entire Q1 (90 days). Query used for Filtering and Aggregation:
+-- The initial step involved preparing the historical demand data for the target station (ID 2498). We aggregated the number of trips daily, creating a time series dataset for the entire Q1 (90 days). Query used for Filtering and Aggregation:
 select count(trip_id) as total_rentals,
        extract(date from start_time) as date_rental,
 from `bqproj-435911.zen_city.rentals`
@@ -1462,7 +1297,7 @@ where start_station_id = 2498
 group by date_rental
 order by total_rentals desc;
 
-
+/*
 -- 2. Model Execution (Google Sheets: LINEST)
 The results were exported from BigQuery to Google Sheets, where the LINEST function was applied to fit a simple linear model: Y = aX + b.
 * Dependent Variable (Y): Daily Trip Count (total_rentals).
@@ -1484,4 +1319,6 @@ Metric
 	The forecast based on the 90-day linear growth trend.
 	Prediction Error =STEYX()
 	25.07
+
 	High error suggests the model lacks features (e.g., day-of-week seasonality).
+*/
